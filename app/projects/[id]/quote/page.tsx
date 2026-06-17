@@ -250,6 +250,13 @@ export default function QuotePage() {
                 Request Measurement Visit
               </button>
 
+              <button
+                onClick={() => router.push(`/projects/${projectId}/pay?total=${total}`)}
+                className="w-full py-3 bg-green-600 hover:bg-green-700 rounded font-semibold mb-3"
+              >
+                Pay ${Math.round(total * 0.5)} Deposit Now
+              </button>
+
               <p className="text-xs text-gray-400 text-center">
                 Next step: Schedule an official measurement & confirm final details
               </p>
