@@ -1,0 +1,8 @@
+[
+  {
+    "origin": ["http://localhost:3001", "https://*.vercel.app"],
+    "method": ["GET", "HEAD", "DELETE", "PUT", "POST"],
+    "responseHeader": ["Content-Type", "x-goog-meta-uploaded-content-type"],
+    "maxAgeSeconds": 3600
+  }
+]
