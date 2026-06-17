@@ -42,6 +42,21 @@ export default function BookPage() {
         ]);
 
       if (insertError) throw insertError;
+
+      // Send confirmation SMS if customer has a phone number
+      if (user.phone) {
+        const formattedDate = new Date(selectedDate).toLocaleDateString();
+        fetch('/api/notify-appointment', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            customerPhone: user.phone,
+            date: formattedDate,
+            timeSlot: timeSlot === 'morning' ? 'Morning 8am–12pm' : 'Afternoon 1pm–5pm',
+          }),
+        }).catch(console.error);
+      }
+
       setSuccess(true);
     } catch (err: any) {
       setError(err.message || 'Failed to book appointment');

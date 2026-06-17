@@ -1,5 +1,6 @@
 import { Anthropic } from '@anthropic-ai/sdk';
 import { NextRequest, NextResponse } from 'next/server';
+import { sendSMS, SMS } from '@/lib/sms';
 
 const anthropic = new Anthropic({
   apiKey: process.env.ANTHROPIC_API_KEY,
@@ -69,6 +70,13 @@ Be conservative with estimates. If you can't determine a measurement, use a typi
     }
 
     const analysis = JSON.parse(jsonMatch[0]);
+
+    // Notify owner of new lead (fire and forget — don't block response)
+    const ownerNumber = process.env.YOUR_PHONE_NUMBER;
+    if (ownerNumber) {
+      const dimensions = `${analysis.roomWidth}ft × ${analysis.roomDepth}ft × ${analysis.roomHeight}ft`;
+      sendSMS(ownerNumber, SMS.newLead(dimensions)).catch(console.error);
+    }
 
     return NextResponse.json(analysis);
   } catch (error: any) {
