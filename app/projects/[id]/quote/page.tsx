@@ -9,11 +9,30 @@ interface Project {
   id: string;
   garage_photo_url: string;
   photo_urls: string[] | null;
+  admin_visualization_url: string | null;
   room_width: number;
   room_height: number;
   room_depth: number;
   notes: string;
 }
+
+interface DesignOptions {
+  paintedWalls: boolean;
+  epoxyFloor: boolean;
+  heavyDutyShelfing: boolean;
+  labeledBins: boolean;
+  pegboard: boolean;
+  ceilingStorage: boolean;
+}
+
+const VIZ_OPTIONS: { key: keyof DesignOptions; label: string }[] = [
+  { key: 'paintedWalls', label: 'Painted Walls' },
+  { key: 'epoxyFloor', label: 'Epoxy Floor' },
+  { key: 'heavyDutyShelfing', label: 'Heavy-Duty Shelving' },
+  { key: 'labeledBins', label: 'Labeled Bins' },
+  { key: 'pegboard', label: 'Pegboard Organizer' },
+  { key: 'ceilingStorage', label: 'Ceiling Storage' },
+];
 
 interface Package {
   id: string;
@@ -75,6 +94,18 @@ export default function QuotePage() {
   const [error, setError] = useState('');
   const [loading2, setLoading2] = useState(true);
 
+  const [vizOptions, setVizOptions] = useState<DesignOptions>({
+    paintedWalls: false,
+    epoxyFloor: false,
+    heavyDutyShelfing: false,
+    labeledBins: false,
+    pegboard: false,
+    ceilingStorage: false,
+  });
+  const [vizUrl, setVizUrl] = useState<string | null>(null);
+  const [vizLoading, setVizLoading] = useState(false);
+  const [vizError, setVizError] = useState('');
+
   useEffect(() => {
     if (!user || !projectId) return;
 
@@ -107,6 +138,28 @@ export default function QuotePage() {
   // Add-ons
   if (binCount > 0) total += binCount * 25; // $25 per bin
   if (materialUpgrade) total += 200; // Premium materials upgrade
+
+  const handleGenerateViz = async () => {
+    const anySelected = Object.values(vizOptions).some(Boolean);
+    if (!anySelected) { setVizError('Select at least one feature to visualize'); return; }
+    if (!project?.garage_photo_url) { setVizError('No photo available for visualization'); return; }
+    setVizLoading(true);
+    setVizError('');
+    try {
+      const res = await fetch('/api/generate-visualization', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ imageUrl: project.garage_photo_url, options: vizOptions }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Generation failed');
+      setVizUrl(data.url);
+    } catch (err: any) {
+      setVizError(err.message || 'Failed to generate visualization');
+    } finally {
+      setVizLoading(false);
+    }
+  };
 
   const handleSubmitQuote = async () => {
     const { error: updateError } = await supabase
@@ -278,6 +331,76 @@ export default function QuotePage() {
               </p>
             </div>
           </div>
+        </div>
+
+        {/* Visualization section */}
+        <div className="bg-gray-800 rounded-lg p-6 mt-2">
+          <h2 className="text-2xl font-bold mb-1">Preview Your Transformation</h2>
+          <p className="text-gray-400 text-sm mb-5">
+            Select the features you're considering and see an AI-generated preview of your space.
+          </p>
+
+          {/* Admin-shared design */}
+          {project.admin_visualization_url && (
+            <div className="mb-6 p-4 bg-blue-900/30 border border-blue-700 rounded-lg">
+              <p className="text-blue-300 text-sm font-semibold mb-3">
+                Harrison shared a custom design concept for your space:
+              </p>
+              <img
+                src={project.admin_visualization_url}
+                alt="Custom design from Harrison"
+                className="w-full rounded-lg"
+              />
+            </div>
+          )}
+
+          {/* Design options */}
+          <div className="grid grid-cols-2 md:grid-cols-3 gap-3 mb-5">
+            {VIZ_OPTIONS.map((opt) => (
+              <label
+                key={opt.key}
+                className="flex items-center gap-2 p-3 bg-gray-700 hover:bg-gray-600 rounded-lg cursor-pointer transition"
+              >
+                <input
+                  type="checkbox"
+                  checked={vizOptions[opt.key]}
+                  onChange={(e) =>
+                    setVizOptions((prev) => ({ ...prev, [opt.key]: e.target.checked }))
+                  }
+                  className="accent-blue-500"
+                />
+                <span className="text-sm">{opt.label}</span>
+              </label>
+            ))}
+          </div>
+
+          {vizError && <p className="text-red-400 text-sm mb-3">{vizError}</p>}
+
+          <button
+            onClick={handleGenerateViz}
+            disabled={vizLoading}
+            className="px-6 py-2.5 bg-purple-600 hover:bg-purple-700 rounded font-semibold disabled:opacity-50 transition"
+          >
+            {vizLoading ? 'Generating preview… (~10 seconds)' : 'Generate Preview'}
+          </button>
+
+          {/* Before / After */}
+          {vizUrl && (
+            <div className="mt-6 grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div>
+                <p className="text-gray-400 text-xs text-center mb-2 uppercase tracking-wide">Before</p>
+                <img
+                  src={project.garage_photo_url}
+                  alt="Before"
+                  className="w-full rounded-lg object-cover"
+                />
+              </div>
+              <div>
+                <p className="text-gray-400 text-xs text-center mb-2 uppercase tracking-wide">AI Preview</p>
+                <img src={vizUrl} alt="AI transformation preview" className="w-full rounded-lg" />
+              </div>
+            </div>
+          )}
         </div>
       </div>
     </div>
