@@ -10,6 +10,7 @@ interface User {
   id: string;
   email: string | null;
   displayName: string | null;
+  phone?: string | null;
   userType?: 'customer' | 'admin';
 }
 
@@ -42,6 +43,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           id: firebaseUser.uid,
           email: firebaseUser.email,
           displayName: firebaseUser.displayName,
+          phone: supabaseUser?.phone || null,
           userType: supabaseUser?.user_type || 'customer',
         });
       } else {

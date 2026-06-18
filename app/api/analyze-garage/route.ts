@@ -75,7 +75,11 @@ Be conservative with estimates. If you can't determine a measurement, use a typi
     const ownerNumber = process.env.YOUR_PHONE_NUMBER;
     if (ownerNumber) {
       const dimensions = `${analysis.roomWidth}ft × ${analysis.roomDepth}ft × ${analysis.roomHeight}ft`;
-      sendSMS(ownerNumber, SMS.newLead(dimensions)).catch(console.error);
+      sendSMS(ownerNumber, SMS.newLead(dimensions))
+        .then(() => console.log('[SMS] New lead alert sent to owner'))
+        .catch((err) => console.error('[SMS] Failed to send lead alert:', err.message));
+    } else {
+      console.warn('[SMS] YOUR_PHONE_NUMBER not set — skipping lead alert');
     }
 
     return NextResponse.json(analysis);

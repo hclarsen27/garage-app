@@ -8,7 +8,7 @@
 - One-time project fees (50% deposit upfront, 50% at completion) via Square
 - Recurring revenue via digital inventory subscriptions (Phase 2)
 
-**Timeline:** MVP core flow working as of 2026-06-17; photo upload → analysis → quote builder live and tested. Next phase: booking, payments, admin dashboard.
+**Timeline:** Full MVP feature set complete as of 2026-06-17. Core flow + booking + payments + admin dashboard + SMS notifications all live and tested locally.
 
 ---
 
@@ -64,6 +64,39 @@ Firebase Storage required paid Blaze plan; CORS policy blocked uploads/access fr
 
 ---
 
+## Session 3 (2026-06-17): Booking, Payments, Admin, SMS, Customer Dashboard
+
+### Built
+1. **Booking page** (`/projects/[id]/book`) — date picker + morning/afternoon time slot, saves to `appointments` table
+2. **Square payment integration** — `/projects/[id]/pay` page with Square Web Payments SDK, 50% deposit flow, sandbox tested and working
+3. **Admin dashboard** (`/admin`) — gated to `hclarsen27@gmail.com`, shows all projects with status badges + appointments tab
+4. **SMS notification layer** (`src/lib/sms.ts`) — provider-agnostic abstraction, Twilio REST implementation, swap provider in one line
+   - Owner SMS alert on new lead (fires after Claude analysis)
+   - Customer appointment confirmation SMS (fires after booking, requires phone on file)
+5. **Phone number on signup** — added optional phone field to signup form, stored in Supabase `users.phone`
+6. **Customer projects page** (`/projects`) — lists all user projects with status, dimensions, smart next-action buttons
+
+### SMS status
+- Twilio trial account set up, number purchased
+- Test endpoint (`/api/test-sms`) confirms SMS works
+- Lead alert fires after photo analysis; needs user to test full flow to confirm
+- Customer SMS requires phone number on file (now collected at signup)
+- To go live: upgrade Twilio from trial (removes verified-number restriction)
+
+### Square status
+- Sandbox credentials in `.env.local`
+- Full deposit payment flow tested and working with sandbox card `4111 1111 1111 1111`
+- To go live: swap to production credentials + change `squareupsandbox.com` → `connect.squareup.com` in `/api/square-payment/route.ts`
+
+### Schema changes this session
+```sql
+ALTER TABLE appointments DROP CONSTRAINT appointments_user_id_fkey;
+ALTER TABLE appointments ALTER COLUMN user_id TYPE text;
+ALTER TABLE appointments DISABLE ROW LEVEL SECURITY;
+```
+
+---
+
 ## Tech Stack & Rationale
 
 | Component | Choice | Why |
@@ -74,6 +107,7 @@ Firebase Storage required paid Blaze plan; CORS policy blocked uploads/access fr
 | **AI** | Claude API (Anthropic) | Vision capabilities for photo analysis, good cost ($0.003/image) |
 | **Storage** | Supabase Storage | Free tier included, simpler permissions than Firebase |
 | **Payments** | Square Web Payments API | Starting with web; can add Square Reader for in-person payments later |
+| **SMS** | Twilio (via provider-agnostic layer) | Cheap ($0.01/msg), easy setup; abstraction layer allows future migration to OpenPhone/etc |
 | **Hosting** | Vercel (frontend) + Firebase/Supabase (backend) | Zero-config deploys, good free tiers, fast cold starts |
 
 **Monthly cost estimate:**
@@ -114,12 +148,18 @@ Firebase Storage required paid Blaze plan; CORS policy blocked uploads/access fr
 | Issue | Impact | Status |
 |-------|--------|--------|
 | ~~Firebase CORS~~ | ~~Images can't upload~~ | ✅ **FIXED** — Migrated to Supabase Storage |
-| Booking/calendar | Users can't schedule measurement visits | Next priority (build `/projects/[id]/book` page) |
-| Quote → measurement request | "Request Measurement Visit" button errors | Requires `quotes` table schema fixes (Phase 2) |
-| Square payment integration | Can't collect 50% deposit | Start Week 2 (form + webhook) |
-| Admin dashboard | Owner can't see leads, quotes, customer details | Phase 2 (exists but barebones) |
+| ~~Booking/calendar~~ | ~~Users can't schedule visits~~ | ✅ **DONE** — `/projects/[id]/book` |
+| ~~Square payment~~ | ~~Can't collect deposit~~ | ✅ **DONE** — Sandbox working, prod-ready |
+| ~~Admin dashboard~~ | ~~Owner can't see leads~~ | ✅ **DONE** — `/admin` gated to owner email |
+| ~~SMS notifications~~ | ~~No alerts~~ | ✅ **DONE** — Twilio layer built, needs prod upgrade |
+| SMS two-way messaging | Can only reply from Twilio console | Long-term: migrate to OpenPhone ($13/mo) |
+| Twilio trial limits | Can only text verified numbers | Upgrade account to remove restriction |
+| Square sandbox only | Real payments not enabled | Swap to prod credentials when ready to launch |
+| `quotes` table schema | "Request Visit" button errors | Phase 2 — fix UUID issue in quotes table |
+| Customer project list | Customers couldn't see their projects | ✅ **DONE** — `/projects` page built |
 | QR inventory system | No digital inventory yet | Phase 2 |
-| Junk removal liability | No legal waivers/signatures in UI | Phase 2 (add digital waiver flow) |
+| Junk removal liability | No legal waivers/signatures in UI | Phase 2 |
+| Payment completion flow | Can't charge 50% at job end | Phase 2 |
 
 ---
 
@@ -129,31 +169,52 @@ Firebase Storage required paid Blaze plan; CORS policy blocked uploads/access fr
 src/
   lib/
     firebase.ts          # Firebase app init + auth exports
-    supabase.ts          # Supabase client (anon key)
+    supabase.ts          # Supabase client (anon key) + supabaseStorage export
+    sms.ts               # Provider-agnostic SMS layer (Twilio impl, swap in one line)
   context/
-    AuthContext.tsx      # User state, Firebase listener, logout
-    
+    AuthContext.tsx      # User state, Firebase listener, logout, phone number
+
 app/
   page.tsx               # Home (redirects to /login or /dashboard)
-  login/
-  signup/
-  dashboard/
+  login/page.tsx
+  signup/page.tsx        # Includes optional phone number field
+  dashboard/page.tsx     # Customer home; Admin button shown to owner only
+  admin/page.tsx         # Owner-only: all leads + appointments (gated by email)
   projects/
-    new/
-      page.tsx           # Photo upload → Claude analysis
+    page.tsx             # Customer project list with status + next-action buttons
+    new/page.tsx         # Photo upload → Claude analysis
     [id]/
-      quote/
-        page.tsx         # Quote builder (image commented out)
-      book/              # Coming: booking calendar
+      quote/page.tsx     # Quote builder (4 packages + customizations)
+      book/page.tsx      # Measurement visit scheduling
+      pay/page.tsx       # Square deposit payment (50%)
   api/
-    analyze-garage/
-      route.ts           # Claude Vision endpoint
+    analyze-garage/route.ts    # Claude Vision endpoint + owner SMS alert
+    square-payment/route.ts    # Square REST API payment processing
+    notify-appointment/route.ts # Customer appointment confirmation SMS
+    test-sms/route.ts          # Debug endpoint (GET /api/test-sms)
 ```
 
 **Config files:**
-- `.env.local` — All secrets (Firebase, Supabase, Anthropic API key)
+- `.env.local` — All secrets (Firebase, Supabase, Anthropic, Square, Twilio)
 - `tsconfig.json` — Path alias `@/*` → `src/*`
-- `cors.json` — Supabase Storage CORS config (for future reference)
+- `cors.json` — Supabase Storage CORS config (for reference)
+
+**Required env vars:**
+```
+NEXT_PUBLIC_FIREBASE_*        # Firebase config
+NEXT_PUBLIC_SUPABASE_URL
+NEXT_PUBLIC_SUPABASE_ANON_KEY
+SUPABASE_SERVICE_ROLE_KEY
+ANTHROPIC_API_KEY             # From "Harrison's Individual Org"
+NEXT_PUBLIC_SQUARE_APPLICATION_ID
+NEXT_PUBLIC_SQUARE_LOCATION_ID
+SQUARE_API_KEY                # Square access token (sandbox or prod)
+TWILIO_ACCOUNT_SID
+TWILIO_AUTH_TOKEN
+TWILIO_PHONE_NUMBER           # e.g. +18447500441
+YOUR_PHONE_NUMBER             # Owner's personal number for lead alerts
+NEXT_PUBLIC_APP_URL
+```
 
 ---
 
@@ -193,22 +254,27 @@ npm run dev -- -p 3001
 
 ## Next Steps (Priority)
 
-### Immediate (This week)
-1. ✅ **Fix Firebase CORS** — **DONE** — Migrated to Supabase Storage
-2. **Build booking page** — Calendar picker for measurement visit scheduling (`/projects/[id]/book`)
-3. **Fix quotes table schema** — Change `id` from UUID to text to match how we're inserting
+### Go-live checklist (before first real customer)
+1. Upgrade Twilio from trial → paid (removes verified-number restriction)
+2. Swap Square sandbox credentials → production credentials
+3. Change `squareupsandbox.com` → `connect.squareup.com` in `/api/square-payment/route.ts`
+4. Deploy to Vercel with all env vars set
+5. Test full flow on production URL
 
-### Week 2
-4. **Square payment integration** — Deposit payment form + webhook handling
-5. **Admin dashboard MVP** — Lead list, contact info, status filter
-6. **Notifications** — Email/SMS to customer after quote; SMS to owner on new lead
+### Near-term features
+- **Fix `quotes` table** — UUID issue breaks "Request Measurement Visit" button
+- **Customer profile page** — edit phone number, view appointment history
+- **Email notifications** — confirmation email after booking (complement to SMS)
+- **Dashboard polish** — redirect from dashboard "My Projects" card to `/projects`
 
 ### Phase 2
 - Digital inventory (QR generation, bin tracking, customer search)
 - Subscription payment automation
+- Two-way SMS inbox (migrate Twilio number to OpenPhone ~$13/mo)
 - Advanced analytics (conversion by package, revenue trends)
 - Native mobile app (optional, if PWA isn't sufficient)
 - Auth sync: Create Supabase users when Firebase users sign up
+- Complete payment flow (charge 50% at job completion)
 
 ---
 
