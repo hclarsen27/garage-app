@@ -29,6 +29,13 @@ interface Appointment {
   status: string;
 }
 
+interface CustomerInfo {
+  id: string;
+  email: string;
+  full_name: string | null;
+  phone: string | null;
+}
+
 interface DesignOptions {
   paintedWalls: boolean;
   epoxyFloor: boolean;
@@ -72,6 +79,7 @@ export default function AdminPage() {
   const [activeTab, setActiveTab] = useState<Tab>('leads');
   const [projects, setProjects] = useState<Project[]>([]);
   const [appointments, setAppointments] = useState<Appointment[]>([]);
+  const [userMap, setUserMap] = useState<Record<string, CustomerInfo>>({});
   const [dataLoading, setDataLoading] = useState(true);
 
   // Visualization state
@@ -96,6 +104,24 @@ export default function AdminPage() {
       ]);
       setProjects(projectData || []);
       setAppointments(appointmentData || []);
+
+      // Fetch customer contact info for everyone who has a project or appointment
+      const userIds = [
+        ...new Set([
+          ...(projectData?.map((p) => p.user_id) || []),
+          ...(appointmentData?.map((a) => a.user_id) || []),
+        ]),
+      ];
+      if (userIds.length > 0) {
+        const { data: userData } = await supabase
+          .from('users')
+          .select('id, email, full_name, phone')
+          .in('id', userIds);
+        const map: Record<string, CustomerInfo> = {};
+        userData?.forEach((u) => { map[u.id] = u; });
+        setUserMap(map);
+      }
+
       setDataLoading(false);
     };
     fetchData();
@@ -227,6 +253,25 @@ export default function AdminPage() {
                       </p>
                       {project.notes && (
                         <p className="text-gray-500 text-sm line-clamp-2">{project.notes}</p>
+                      )}
+                      {userMap[project.user_id] && (
+                        <div className="flex flex-wrap items-center gap-x-3 gap-y-1 mt-2">
+                          {userMap[project.user_id].full_name && (
+                            <span className="text-gray-300 text-sm font-medium">
+                              {userMap[project.user_id].full_name}
+                            </span>
+                          )}
+                          <a href={`mailto:${userMap[project.user_id].email}`}
+                            className="text-blue-400 hover:text-blue-300 text-sm">
+                            {userMap[project.user_id].email}
+                          </a>
+                          {userMap[project.user_id].phone && (
+                            <a href={`tel:${userMap[project.user_id].phone}`}
+                              className="text-green-400 hover:text-green-300 text-sm">
+                              {userMap[project.user_id].phone}
+                            </a>
+                          )}
+                        </div>
                       )}
                       <p className="text-gray-600 text-xs mt-2">
                         {new Date(project.created_at).toLocaleDateString()}
@@ -361,10 +406,28 @@ export default function AdminPage() {
                     <div>
                       <p className="font-semibold">{date.toLocaleDateString()}</p>
                       <p className="text-gray-400 text-sm">{timeSlot}</p>
-                      <p className="text-gray-600 text-xs mt-1">Project: {appt.project_id}</p>
+                      {userMap[appt.user_id] && (
+                        <div className="flex flex-wrap items-center gap-x-2 mt-1">
+                          {userMap[appt.user_id].full_name && (
+                            <span className="text-gray-300 text-sm">
+                              {userMap[appt.user_id].full_name}
+                            </span>
+                          )}
+                          <a href={`mailto:${userMap[appt.user_id].email}`}
+                            className="text-blue-400 hover:text-blue-300 text-xs">
+                            {userMap[appt.user_id].email}
+                          </a>
+                          {userMap[appt.user_id].phone && (
+                            <a href={`tel:${userMap[appt.user_id].phone}`}
+                              className="text-green-400 hover:text-green-300 text-xs">
+                              {userMap[appt.user_id].phone}
+                            </a>
+                          )}
+                        </div>
+                      )}
                     </div>
                     <span
-                      className={`text-xs px-2 py-0.5 rounded-full text-white ${
+                      className={`text-xs px-2 py-0.5 rounded-full text-white shrink-0 ${
                         STATUS_DISPLAY[appt.status]?.color || 'bg-gray-600'
                       }`}
                     >

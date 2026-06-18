@@ -16,6 +16,7 @@ export default function NewProjectPage() {
   const inputRef = useRef<HTMLInputElement>(null);
 
   const [photos, setPhotos] = useState<PhotoEntry[]>([]);
+  const [projectName, setProjectName] = useState('');
   const [uploading, setUploading] = useState(false);
   const [analyzing, setAnalyzing] = useState(false);
   const [error, setError] = useState('');
@@ -95,7 +96,7 @@ export default function NewProjectPage() {
         .insert([
           {
             user_id: user.id,
-            title: `Garage Project - ${new Date().toLocaleDateString()}`,
+            title: projectName.trim() || `Garage Project — ${new Date().toLocaleDateString()}`,
             garage_photo_url: photoUrls[0],
             photo_urls: photoUrls,
             room_width: analysisData.roomWidth,
@@ -136,6 +137,21 @@ export default function NewProjectPage() {
         )}
 
         <div className="bg-gray-800 rounded-lg p-8">
+          {/* Project name */}
+          <div className="mb-6">
+            <label className="block text-sm font-medium text-gray-300 mb-2">
+              Project name <span className="text-gray-500">(optional)</span>
+            </label>
+            <input
+              type="text"
+              value={projectName}
+              onChange={(e) => setProjectName(e.target.value)}
+              placeholder="e.g. Main Garage, Shop Reorg…"
+              disabled={busy}
+              className="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded text-white placeholder-gray-500 focus:outline-none focus:border-blue-500 disabled:opacity-50"
+            />
+          </div>
+
           {/* Photo grid */}
           {photos.length > 0 && (
             <div className="grid grid-cols-2 gap-3 mb-6">

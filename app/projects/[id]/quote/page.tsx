@@ -7,6 +7,8 @@ import { supabase } from '@/lib/supabase';
 
 interface Project {
   id: string;
+  title: string;
+  status: string;
   garage_photo_url: string;
   photo_urls: string[] | null;
   admin_visualization_url: string | null;
@@ -173,10 +175,43 @@ export default function QuotePage() {
     }
   };
 
+  const STEPS = [
+    { key: 'new', label: 'Quote Ready' },
+    { key: 'quoted', label: 'Visit Booked' },
+    { key: 'booked', label: 'Deposit Paid' },
+    { key: 'complete', label: 'Complete' },
+  ];
+  const currentStep = STEPS.findIndex((s) => s.key === project.status);
+
   return (
     <div className="min-h-screen bg-gray-900 text-white p-6">
       <div className="max-w-6xl mx-auto">
-        <h1 className="text-4xl font-bold mb-8">Your Garage Quote</h1>
+        {/* Progress stepper */}
+        <div className="flex items-center mb-8 overflow-x-auto pb-1">
+          {STEPS.map((step, i) => (
+            <div key={step.key} className="flex items-center shrink-0">
+              <div className="flex flex-col items-center">
+                <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold border-2 ${
+                  i < currentStep
+                    ? 'bg-blue-600 border-blue-600 text-white'
+                    : i === currentStep
+                    ? 'bg-blue-600 border-blue-600 text-white'
+                    : 'border-gray-600 text-gray-600'
+                }`}>
+                  {i < currentStep ? '✓' : i + 1}
+                </div>
+                <span className={`text-xs mt-1 whitespace-nowrap ${i <= currentStep ? 'text-white' : 'text-gray-600'}`}>
+                  {step.label}
+                </span>
+              </div>
+              {i < STEPS.length - 1 && (
+                <div className={`h-0.5 w-12 sm:w-20 mx-1 mb-4 ${i < currentStep ? 'bg-blue-600' : 'bg-gray-700'}`} />
+              )}
+            </div>
+          ))}
+        </div>
+
+        <h1 className="text-4xl font-bold mb-8">{project.title || 'Your Garage Quote'}</h1>
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 mb-8">
           {/* Project Details */}

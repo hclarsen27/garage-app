@@ -105,6 +105,24 @@ export default function DashboardPage() {
           </div>
         )}
 
+        {/* First-time welcome */}
+        {stats.total === 0 && (
+          <div className="bg-gradient-to-r from-blue-900/40 to-gray-800 border border-blue-800 rounded-xl p-8 mb-8 text-center">
+            <div className="text-5xl mb-4">🏠</div>
+            <h2 className="text-2xl font-bold mb-2">Welcome to Garage Transform!</h2>
+            <p className="text-gray-400 mb-6 max-w-md mx-auto">
+              Take a few photos of your garage and get an instant AI-powered quote in under a minute.
+              No obligation, no phone call required.
+            </p>
+            <Link
+              href="/projects/new"
+              className="inline-block px-8 py-3 bg-blue-600 hover:bg-blue-700 rounded-lg font-semibold text-lg transition"
+            >
+              Upload Your First Photo →
+            </Link>
+          </div>
+        )}
+
         {/* Action cards */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-10">
           <Link href="/projects/new">

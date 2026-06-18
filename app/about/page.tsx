@@ -1,5 +1,12 @@
+import type { Metadata } from 'next';
 import Link from 'next/link';
 import MarketingNav from '@/components/MarketingNav';
+
+export const metadata: Metadata = {
+  title: 'About Us',
+  description:
+    'Garage Transform is a Magic Valley garage organization company built around transparent pricing, AI-powered quotes, and professional installation.',
+};
 
 const VALUES = [
   {
@@ -80,8 +87,7 @@ export default function AboutPage() {
         <div className="max-w-3xl mx-auto px-6 text-center">
           <h2 className="text-3xl font-bold mb-4">Service Area</h2>
           <p className="text-gray-400 mb-8">
-            {/* TODO: update with your actual service area */}
-            Currently serving the greater Houston area. Not sure if we cover your neighborhood?
+            Currently serving the Magic Valley and surrounding areas. Not sure if we cover your neighborhood?
             Start a free quote and we'll let you know.
           </p>
           <Link

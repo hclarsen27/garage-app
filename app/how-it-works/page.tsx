@@ -1,5 +1,12 @@
+import type { Metadata } from 'next';
 import Link from 'next/link';
 import MarketingNav from '@/components/MarketingNav';
+
+export const metadata: Metadata = {
+  title: 'How It Works',
+  description:
+    'From a photo on your phone to a fully transformed garage — see all 7 steps of the Garage Transform process.',
+};
 
 const STEPS = [
   {
