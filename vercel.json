@@ -1,0 +1,26 @@
+{
+  "framework": "nextjs",
+  "buildCommand": "npm run build",
+  "devCommand": "npm run dev",
+  "installCommand": "npm install",
+  "env": {
+    "NEXT_PUBLIC_FIREBASE_API_KEY": "@firebase_api_key",
+    "NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN": "@firebase_auth_domain",
+    "NEXT_PUBLIC_FIREBASE_PROJECT_ID": "@firebase_project_id",
+    "NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET": "@firebase_storage_bucket",
+    "NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID": "@firebase_messaging_sender_id",
+    "NEXT_PUBLIC_FIREBASE_APP_ID": "@firebase_app_id",
+    "NEXT_PUBLIC_SUPABASE_URL": "@supabase_url",
+    "NEXT_PUBLIC_SUPABASE_ANON_KEY": "@supabase_anon_key",
+    "SUPABASE_SERVICE_ROLE_KEY": "@supabase_service_role_key",
+    "ANTHROPIC_API_KEY": "@anthropic_api_key",
+    "NEXT_PUBLIC_SQUARE_APPLICATION_ID": "@square_application_id",
+    "NEXT_PUBLIC_SQUARE_LOCATION_ID": "@square_location_id",
+    "SQUARE_API_KEY": "@square_api_key",
+    "TWILIO_ACCOUNT_SID": "@twilio_account_sid",
+    "TWILIO_AUTH_TOKEN": "@twilio_auth_token",
+    "TWILIO_PHONE_NUMBER": "@twilio_phone_number",
+    "YOUR_PHONE_NUMBER": "@your_phone_number",
+    "NEXT_PUBLIC_APP_URL": "@app_url"
+  }
+}

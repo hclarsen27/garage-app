@@ -42,6 +42,12 @@ export default function DashboardPage() {
           <h1 className="text-2xl font-bold">Garage Transform</h1>
           <div className="flex items-center gap-4">
             <span className="text-gray-400">Welcome, {user.full_name || user.email}</span>
+            <Link
+              href="/profile"
+              className="px-4 py-2 bg-gray-700 hover:bg-gray-600 rounded font-medium"
+            >
+              Profile
+            </Link>
             {user.email === ADMIN_EMAIL && (
               <Link
                 href="/admin"
