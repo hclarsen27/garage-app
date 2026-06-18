@@ -1,13 +1,13 @@
 'use client';
 
-import { useState } from 'react';
+import { Suspense, useState } from 'react';
 import { signInWithEmailAndPassword, signInWithPopup, GoogleAuthProvider } from 'firebase/auth';
 import { auth } from '@/lib/firebase';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { supabase } from '@/lib/supabase';
 
-export default function LoginPage() {
+function LoginForm() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
@@ -58,17 +58,15 @@ export default function LoginPage() {
       const userCred = await signInWithPopup(auth, provider);
       document.cookie = `auth-token=${userCred.user.uid}; path=/; max-age=86400`;
 
-      // Create user in Supabase if doesn't exist
-      await supabase.from('users').insert(
-        [
-          {
-            id: userCred.user.uid,
-            email: userCred.user.email,
-            full_name: userCred.user.displayName,
-            user_type: 'customer',
-          },
-        ],
-        { onConflict: 'id' }
+      // Upsert user in Supabase (no-op if already exists)
+      await supabase.from('users').upsert(
+        {
+          id: userCred.user.uid,
+          email: userCred.user.email,
+          full_name: userCred.user.displayName,
+          user_type: 'customer',
+        },
+        { onConflict: 'id', ignoreDuplicates: true }
       );
 
       router.push(redirectTo);
@@ -148,5 +146,13 @@ export default function LoginPage() {
         </p>
       </div>
     </div>
+  );
+}
+
+export default function LoginPage() {
+  return (
+    <Suspense>
+      <LoginForm />
+    </Suspense>
   );
 }

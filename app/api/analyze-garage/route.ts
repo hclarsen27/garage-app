@@ -6,23 +6,45 @@ const anthropic = new Anthropic({
   apiKey: process.env.ANTHROPIC_API_KEY,
 });
 
+type SupportedMediaType = 'image/jpeg' | 'image/png' | 'image/gif' | 'image/webp';
+
+function parseImage(dataUrl: string): { data: string; mediaType: SupportedMediaType } {
+  const data = dataUrl.includes(',') ? dataUrl.split(',')[1] : dataUrl;
+  const prefix = dataUrl.split(';')[0].split(':')[1] || '';
+  const supported: SupportedMediaType[] = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
+  const mediaType: SupportedMediaType = supported.includes(prefix as SupportedMediaType)
+    ? (prefix as SupportedMediaType)
+    : 'image/jpeg';
+  return { data, mediaType };
+}
+
 export async function POST(request: NextRequest) {
   try {
-    const { imageBase64 } = await request.json();
+    const body = await request.json();
 
-    if (!imageBase64) {
-      return NextResponse.json(
-        { error: 'Image data required' },
-        { status: 400 }
-      );
+    // Accept either multi-image (imagesBase64[]) or legacy single image (imageBase64)
+    const rawImages: string[] = body.imagesBase64
+      ? body.imagesBase64
+      : body.imageBase64
+      ? [body.imageBase64]
+      : [];
+
+    if (rawImages.length === 0) {
+      return NextResponse.json({ error: 'At least one image is required' }, { status: 400 });
     }
 
-    // Extract base64 data (remove data:image/...;base64, prefix if present)
-    const base64Data = imageBase64.includes(',')
-      ? imageBase64.split(',')[1]
-      : imageBase64;
+    const imageBlocks = rawImages.map((img) => {
+      const { data, mediaType } = parseImage(img);
+      return {
+        type: 'image' as const,
+        source: { type: 'base64' as const, media_type: mediaType, data },
+      };
+    });
 
-    // Call Claude Vision to analyze the garage photo
+    const photoLabel = rawImages.length > 1
+      ? `these ${rawImages.length} garage photos (different walls/angles)`
+      : 'this garage photo';
+
     const response = await anthropic.messages.create({
       model: 'claude-opus-4-8',
       max_tokens: 1024,
@@ -30,17 +52,10 @@ export async function POST(request: NextRequest) {
         {
           role: 'user',
           content: [
-            {
-              type: 'image',
-              source: {
-                type: 'base64',
-                media_type: 'image/jpeg',
-                data: base64Data,
-              },
-            },
+            ...imageBlocks,
             {
               type: 'text',
-              text: `Analyze this garage photo and provide the following in JSON format:
+              text: `Analyze ${photoLabel} and provide the following in JSON format:
 {
   "roomWidth": <estimated width in feet as a number>,
   "roomDepth": <estimated depth in feet as a number>,
@@ -50,44 +65,33 @@ export async function POST(request: NextRequest) {
   "estimatedSquareFootage": <number>
 }
 
-Be conservative with estimates. If you can't determine a measurement, use a typical garage dimension (e.g., 20ft width).`,
+${rawImages.length > 1 ? 'Use all photos together to give the most accurate combined estimate of the full space.' : ''}
+Be conservative with estimates. If you cannot determine a measurement, use a typical garage dimension (e.g., 20ft width).`,
             },
           ],
         },
       ],
     });
 
-    // Parse the response
     const content = response.content[0];
-    if (content.type !== 'text') {
-      throw new Error('Unexpected response type from Claude');
-    }
+    if (content.type !== 'text') throw new Error('Unexpected response type from Claude');
 
-    // Extract JSON from response
     const jsonMatch = content.text.match(/\{[\s\S]*\}/);
-    if (!jsonMatch) {
-      throw new Error('Could not parse analysis response');
-    }
+    if (!jsonMatch) throw new Error('Could not parse analysis response');
 
     const analysis = JSON.parse(jsonMatch[0]);
 
-    // Notify owner of new lead (fire and forget — don't block response)
     const ownerNumber = process.env.YOUR_PHONE_NUMBER;
     if (ownerNumber) {
       const dimensions = `${analysis.roomWidth}ft × ${analysis.roomDepth}ft × ${analysis.roomHeight}ft`;
       sendSMS(ownerNumber, SMS.newLead(dimensions))
         .then(() => console.log('[SMS] New lead alert sent to owner'))
         .catch((err) => console.error('[SMS] Failed to send lead alert:', err.message));
-    } else {
-      console.warn('[SMS] YOUR_PHONE_NUMBER not set — skipping lead alert');
     }
 
     return NextResponse.json(analysis);
   } catch (error: any) {
     console.error('Analysis error:', error);
-    return NextResponse.json(
-      { error: error.message || 'Failed to analyze photo' },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: error.message || 'Failed to analyze photo' }, { status: 500 });
   }
 }

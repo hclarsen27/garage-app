@@ -8,6 +8,7 @@ import { supabase } from '@/lib/supabase';
 interface Project {
   id: string;
   garage_photo_url: string;
+  photo_urls: string[] | null;
   room_width: number;
   room_height: number;
   room_depth: number;
@@ -107,14 +108,16 @@ export default function QuotePage() {
   if (binCount > 0) total += binCount * 25; // $25 per bin
   if (materialUpgrade) total += 200; // Premium materials upgrade
 
-  const handleSubmitQuote = () => {
-    // Update project status to quoted and navigate to booking
-    supabase
+  const handleSubmitQuote = async () => {
+    const { error: updateError } = await supabase
       .from('projects')
       .update({ status: 'quoted' })
-      .eq('id', projectId)
-      .then(() => router.push(`/projects/${projectId}/book`))
-      .catch((err) => setError(err.message || 'Failed to proceed'));
+      .eq('id', projectId);
+    if (updateError) {
+      setError(updateError.message || 'Failed to proceed');
+    } else {
+      router.push(`/projects/${projectId}/book`);
+    }
   };
 
   return (
@@ -126,13 +129,24 @@ export default function QuotePage() {
           {/* Project Details */}
           <div className="lg:col-span-2">
             <div className="bg-gray-800 rounded-lg overflow-hidden mb-6">
-              {project.garage_photo_url && (
+              {project.photo_urls && project.photo_urls.length > 1 ? (
+                <div className="grid grid-cols-2 gap-1">
+                  {project.photo_urls.map((url, i) => (
+                    <img
+                      key={i}
+                      src={url}
+                      alt={`Garage photo ${i + 1}`}
+                      className="w-full h-40 object-cover"
+                    />
+                  ))}
+                </div>
+              ) : project.garage_photo_url ? (
                 <img
                   src={project.garage_photo_url}
                   alt="Garage"
                   className="w-full h-64 object-cover"
                 />
-              )}
+              ) : null}
               <div className="p-6">
                 <h2 className="text-2xl font-bold mb-4">Space Analysis</h2>
                 <div className="grid grid-cols-3 gap-4 mb-6">
