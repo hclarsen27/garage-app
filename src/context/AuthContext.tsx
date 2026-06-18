@@ -29,8 +29,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (firebaseUser: FirebaseUser | null) => {
       if (firebaseUser) {
-        // Set auth token cookie
+        // Set auth cookies
         document.cookie = `auth-token=${firebaseUser.uid}; path=/; max-age=86400`;
+        document.cookie = `user-email=${firebaseUser.email}; path=/; max-age=86400`;
 
         // Sync Firebase user with Supabase
         const { data: supabaseUser } = await supabase

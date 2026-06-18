@@ -28,17 +28,29 @@ export default function PayPage() {
   const [success, setSuccess] = useState(false);
 
   useEffect(() => {
+    // If SDK already loaded (e.g. back-navigation), initialize immediately
+    if (window.Square) {
+      setSdkReady(true);
+      return;
+    }
+    // Avoid adding duplicate script tags
+    if (document.querySelector('script[src*="squarecdn"]')) {
+      setSdkReady(true);
+      return;
+    }
     const script = document.createElement('script');
     script.src = 'https://sandbox.web.squarecdn.com/v1/square.js';
     script.onload = () => setSdkReady(true);
     document.head.appendChild(script);
-    return () => {
-      document.head.removeChild(script);
-    };
   }, []);
 
   useEffect(() => {
-    if (!sdkReady || !cardContainerRef.current || cardRef.current) return;
+    if (!sdkReady || !cardContainerRef.current) return;
+    // Destroy existing card instance before re-initializing
+    if (cardRef.current) {
+      cardRef.current.destroy?.();
+      cardRef.current = null;
+    }
 
     const initSquare = async () => {
       const payments = window.Square.payments(

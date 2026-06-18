@@ -2,32 +2,57 @@
 
 import { useAuth } from '@/context/AuthContext';
 import { useRouter } from 'next/navigation';
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import Link from 'next/link';
+import { supabase } from '@/lib/supabase';
 
 const ADMIN_EMAIL = 'hclarsen27@gmail.com';
+
+interface Stats {
+  total: number;
+  active: number;
+  nextAppointment: string | null;
+}
 
 export default function DashboardPage() {
   const { user, loading, logout } = useAuth();
   const router = useRouter();
+  const [stats, setStats] = useState<Stats>({ total: 0, active: 0, nextAppointment: null });
 
   useEffect(() => {
-    if (!loading && !user) {
-      router.push('/login');
-    }
+    if (!loading && !user) router.push('/login');
   }, [user, loading, router]);
 
-  if (loading) {
-    return (
-      <div className="min-h-screen bg-gray-900 flex items-center justify-center">
-        <div className="text-white text-xl">Loading...</div>
-      </div>
-    );
-  }
+  useEffect(() => {
+    if (!user) return;
+    const fetchStats = async () => {
+      const [{ data: projects }, { data: appointments }] = await Promise.all([
+        supabase.from('projects').select('id, status').eq('user_id', user.id),
+        supabase
+          .from('appointments')
+          .select('scheduled_at')
+          .eq('user_id', user.id)
+          .gte('scheduled_at', new Date().toISOString())
+          .order('scheduled_at', { ascending: true })
+          .limit(1),
+      ]);
 
-  if (!user) {
-    return null;
-  }
+      const total = projects?.length || 0;
+      const active = projects?.filter((p) => p.status !== 'complete').length || 0;
+      const nextAppointment = appointments?.[0]?.scheduled_at
+        ? new Date(appointments[0].scheduled_at).toLocaleDateString('en-US', {
+            month: 'short',
+            day: 'numeric',
+          })
+        : null;
+
+      setStats({ total, active, nextAppointment });
+    };
+
+    fetchStats();
+  }, [user]);
+
+  if (loading || !user) return null;
 
   const handleLogout = async () => {
     await logout();
@@ -36,23 +61,18 @@ export default function DashboardPage() {
 
   return (
     <div className="min-h-screen bg-gray-900 text-white">
-      {/* Header */}
       <header className="bg-gray-800 border-b border-gray-700 px-6 py-4">
         <div className="max-w-7xl mx-auto flex justify-between items-center">
           <h1 className="text-2xl font-bold">Garage Transform</h1>
-          <div className="flex items-center gap-4">
-            <span className="text-gray-400">Welcome, {user.full_name || user.email}</span>
-            <Link
-              href="/profile"
-              className="px-4 py-2 bg-gray-700 hover:bg-gray-600 rounded font-medium"
-            >
+          <div className="flex items-center gap-3">
+            <span className="text-gray-400 hidden sm:inline">
+              {user.displayName || user.email}
+            </span>
+            <Link href="/profile" className="px-4 py-2 bg-gray-700 hover:bg-gray-600 rounded font-medium">
               Profile
             </Link>
             {user.email === ADMIN_EMAIL && (
-              <Link
-                href="/admin"
-                className="px-4 py-2 bg-purple-600 hover:bg-purple-700 rounded font-medium"
-              >
+              <Link href="/admin" className="px-4 py-2 bg-purple-600 hover:bg-purple-700 rounded font-medium">
                 Admin
               </Link>
             )}
@@ -66,46 +86,65 @@ export default function DashboardPage() {
         </div>
       </header>
 
-      {/* Main Content */}
-      <main className="max-w-7xl mx-auto px-6 py-12">
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {/* New Project Card */}
+      <main className="max-w-7xl mx-auto px-6 py-8">
+        {/* Stats row */}
+        {stats.total > 0 && (
+          <div className="grid grid-cols-3 gap-4 mb-8">
+            <div className="bg-gray-800 rounded-lg p-4 text-center">
+              <p className="text-gray-400 text-sm mb-1">Projects</p>
+              <p className="text-3xl font-bold">{stats.total}</p>
+            </div>
+            <div className="bg-gray-800 rounded-lg p-4 text-center">
+              <p className="text-gray-400 text-sm mb-1">Active</p>
+              <p className="text-3xl font-bold">{stats.active}</p>
+            </div>
+            <div className="bg-gray-800 rounded-lg p-4 text-center">
+              <p className="text-gray-400 text-sm mb-1">Next Visit</p>
+              <p className="text-xl font-bold">{stats.nextAppointment || '—'}</p>
+            </div>
+          </div>
+        )}
+
+        {/* Action cards */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-10">
           <Link href="/projects/new">
             <div className="bg-gray-800 border border-gray-700 rounded-lg p-6 hover:border-blue-500 cursor-pointer transition">
               <div className="text-4xl mb-4">📸</div>
               <h2 className="text-xl font-bold mb-2">New Project</h2>
-              <p className="text-gray-400">Upload photos and get started on your garage transformation</p>
+              <p className="text-gray-400">Upload a photo and get an instant AI-powered quote</p>
             </div>
           </Link>
 
-          {/* My Projects Card */}
           <Link href="/projects">
             <div className="bg-gray-800 border border-gray-700 rounded-lg p-6 hover:border-blue-500 cursor-pointer transition">
               <div className="text-4xl mb-4">📋</div>
               <h2 className="text-xl font-bold mb-2">My Projects</h2>
-              <p className="text-gray-400">View and manage all your garage projects</p>
+              <p className="text-gray-400">
+                {stats.total > 0
+                  ? `${stats.total} project${stats.total !== 1 ? 's' : ''} — ${stats.active} active`
+                  : 'View and manage your garage projects'}
+              </p>
             </div>
           </Link>
 
-          {/* Digital Inventory Card */}
-          <Link href="/inventory">
+          <Link href="/profile">
             <div className="bg-gray-800 border border-gray-700 rounded-lg p-6 hover:border-blue-500 cursor-pointer transition">
-              <div className="text-4xl mb-4">🎯</div>
-              <h2 className="text-xl font-bold mb-2">Digital Inventory</h2>
-              <p className="text-gray-400">Organize and track items in your garage bins</p>
+              <div className="text-4xl mb-4">👤</div>
+              <h2 className="text-xl font-bold mb-2">My Profile</h2>
+              <p className="text-gray-400">Update your contact info and view appointment history</p>
             </div>
           </Link>
         </div>
 
-        {/* Info Section */}
-        <div className="mt-12 bg-gray-800 border border-gray-700 rounded-lg p-8">
-          <h2 className="text-2xl font-bold mb-4">How it Works</h2>
-          <ol className="space-y-3 text-gray-300">
-            <li><strong>1. Upload Photos:</strong> Take photos of your garage space</li>
-            <li><strong>2. Get Quote:</strong> Receive an AI-generated estimate with 2D renderings</li>
-            <li><strong>3. Book Measurement:</strong> Schedule an official measurement visit</li>
-            <li><strong>4. Installation:</strong> We handle the shelving, organization, and setup</li>
-            <li><strong>5. Digital Inventory:</strong> Get QR-coded bins and digital tracking</li>
+        {/* How it works */}
+        <div className="bg-gray-800 border border-gray-700 rounded-lg p-8">
+          <h2 className="text-xl font-bold mb-4">How It Works</h2>
+          <ol className="space-y-2 text-gray-300">
+            <li><span className="text-blue-400 font-semibold">1. Upload Photos</span> — Take a photo of your garage space</li>
+            <li><span className="text-blue-400 font-semibold">2. Get a Quote</span> — AI analyzes your space and generates a custom estimate</li>
+            <li><span className="text-blue-400 font-semibold">3. Book a Visit</span> — Schedule an official measurement visit</li>
+            <li><span className="text-blue-400 font-semibold">4. Pay Deposit</span> — Secure your project with a 50% deposit</li>
+            <li><span className="text-blue-400 font-semibold">5. Installation</span> — We handle shelving, organization, and setup</li>
           </ol>
         </div>
       </main>

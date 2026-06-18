@@ -126,11 +126,13 @@ export default function QuotePage() {
           {/* Project Details */}
           <div className="lg:col-span-2">
             <div className="bg-gray-800 rounded-lg overflow-hidden mb-6">
-              {/* <img
-                src={project.garage_photo_url}
-                alt="Garage"
-                className="w-full h-80 object-cover"
-              /> */}
+              {project.garage_photo_url && (
+                <img
+                  src={project.garage_photo_url}
+                  alt="Garage"
+                  className="w-full h-64 object-cover"
+                />
+              )}
               <div className="p-6">
                 <h2 className="text-2xl font-bold mb-4">Space Analysis</h2>
                 <div className="grid grid-cols-3 gap-4 mb-6">

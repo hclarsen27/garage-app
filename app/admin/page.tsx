@@ -66,6 +66,13 @@ export default function AdminPage() {
   if (loading || !user) return null;
   if (user.email !== ADMIN_EMAIL) return null;
 
+  const STATUS_DISPLAY: Record<string, { label: string; color: string }> = {
+    new: { label: 'Quote Ready', color: 'bg-blue-600' },
+    quoted: { label: 'Visit Pending', color: 'bg-yellow-600' },
+    booked: { label: 'Deposit Paid', color: 'bg-purple-600' },
+    complete: { label: 'Complete', color: 'bg-green-600' },
+  };
+
   const statusColor = (status: string) => {
     switch (status) {
       case 'new': return 'bg-blue-600';
@@ -131,8 +138,8 @@ export default function AdminPage() {
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-3 mb-2">
                       <h3 className="font-semibold truncate">{project.title}</h3>
-                      <span className={`text-xs px-2 py-0.5 rounded-full text-white ${statusColor(project.status)}`}>
-                        {project.status}
+                      <span className={`text-xs px-2 py-0.5 rounded-full text-white ${STATUS_DISPLAY[project.status]?.color || 'bg-gray-600'}`}>
+                        {STATUS_DISPLAY[project.status]?.label || project.status}
                       </span>
                     </div>
                     <p className="text-gray-400 text-sm mb-1">

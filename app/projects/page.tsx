@@ -18,16 +18,16 @@ interface Project {
 }
 
 const STATUS_LABEL: Record<string, { label: string; color: string }> = {
-  new: { label: 'Analysis Complete', color: 'bg-blue-600' },
-  quoted: { label: 'Quote Ready', color: 'bg-yellow-600' },
-  booked: { label: 'Visit Scheduled', color: 'bg-purple-600' },
+  new: { label: 'Quote Ready', color: 'bg-blue-600' },
+  quoted: { label: 'Book a Visit', color: 'bg-yellow-600' },
+  booked: { label: 'Deposit Paid', color: 'bg-purple-600' },
   complete: { label: 'Complete', color: 'bg-green-600' },
 };
 
 const STATUS_NEXT: Record<string, { label: string; href: (id: string) => string }> = {
-  new: { label: 'View Quote', href: (id) => `/projects/${id}/quote` },
-  quoted: { label: 'Book Visit', href: (id) => `/projects/${id}/book` },
-  booked: { label: 'Pay Deposit', href: (id) => `/projects/${id}/pay` },
+  new: { label: 'View Quote →', href: (id) => `/projects/${id}/quote` },
+  quoted: { label: 'Book Visit →', href: (id) => `/projects/${id}/book` },
+  booked: { label: 'Pay Deposit →', href: (id) => `/projects/${id}/pay` },
 };
 
 export default function ProjectsPage() {
